@@ -4,25 +4,27 @@
 
 #include <Arduino.h>
 
+#define ARDUINO_ARCH_ESP32
 
 // #define NT3H_useWireLib  // force the use of Wire.h (instead of platform-optimized code (if available))
 
 #define NT3HdebugPrint(x)  Serial.println(x)    //you can undefine these printing functions no problem, they are only for printing I2C errors
 //#define NT3HdebugPrint(x)  log_d(x)  // ESP32 style logging
 
-// #define NT3H_unlock_burning
+#define NT3H_unlock_burning
 
-#include <NT3H_thijs.h>
+#include <../../../NT3H_thijs.h>
 
 // NT3H_thijs NFCtag(  false  ,  false  ); // initialize NT3H1101 (1k variant of old IC)
-// NT3H_thijs NFCtag(  false  ,  true  ); // initialize NT3H1201 (1k variant of old IC)
+// NT3H_thijs NFCtag(  false  ,  true  ); // initialize NT3H1201 (2k variant of old IC)
 NT3H_thijs NFCtag(  true  ,  false  ); // initialize NT3H2111 (1k variant of new IC)
-// NT3H_thijs NFCtag(  true  ,  true  ); // initialize NT3H2211 (1k variant of new IC)
+// NT3H_thijs NFCtag(  true  ,  true  ); // initialize NT3H2211 (2k variant of new IC)
 
 
 #ifdef ARDUINO_ARCH_ESP32  // on the ESP32, almost any pin can become an I2C pin
   const uint8_t NT3H_SDApin = 26; // 'defualt' is 21 (but this is just some random value Arduino decided.)
   const uint8_t NT3H_SCLpin = 27; // 'defualt' is 22 
+  #define LEDpin 13
 #endif
 #ifdef ARDUINO_ARCH_STM32   // on the STM32, each I2C peripheral has several pin options
   const uint8_t NT3H_SDApin = SDA; // default pin, on the STM32WB55 (nucleo_wb55rg_p) that's pin PB9
@@ -61,9 +63,9 @@ void setup()
     pinMode(LEDpin, OUTPUT);
   #endif
 
-
-  Serial.setRx(PA10);  Serial.setTx(PA9); // PCB R01
-
+  #ifdef ARDUINO_ARCH_STM32
+   Serial.setRx(PA10);  Serial.setTx(PA9); // PCB R01
+  #endif
 
 
   Serial.begin(115200);  delay(50); Serial.println();
@@ -103,7 +105,7 @@ void setup()
   //// first, some basic checks. NOTE: will halt entire sketch if something's wrong
   if(!NFCtag.connectionCheck()) { Serial.println("NT3H connection check failed!");    while(1);    } else { Serial.println("connection good"); }
   Serial.print("UID: "); uint8_t UID[7]; NFCtag.getUID(UID); for(uint8_t i=0; i<7; i++) { Serial.print(UID[i], HEX); Serial.print(' '); } Serial.println();
-  //if(!NFCtag.variantCheck()) { Serial.println("resetting CC to factory default..."); NFCtag.resetCC(); } // you can only change the CC bytes from I2C (not RF)
+  if(!NFCtag.variantCheck()) { Serial.println("resetting CC to factory default..."); NFCtag.resetCC(); } // you can only change the CC bytes from I2C (not RF)
   Serial.print("CC as bytes: "); uint8_t CC[4]; NFCtag.getCC(CC); for(uint8_t i=0; i<4; i++) { Serial.print(CC[i], HEX); Serial.print(' '); }
   Serial.print("  should be: "); Serial.println(NT3H_CAPA_CONT_DEFAULT_uint32_t[NFCtag.is2kVariant], HEX);
   if(!NFCtag.variantCheck()) { Serial.println("NT3H variant check failed!");    while(1);     } else  { Serial.println("variant good"); }
